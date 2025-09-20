@@ -3,6 +3,7 @@ name: Build & Deploy (Azure Container)
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch: {}   # <- จะได้กดรันเองได้ด้วย
 
 jobs:
   build-and-push:

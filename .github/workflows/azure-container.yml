@@ -1,0 +1,45 @@
+name: Build & Deploy (Azure Container)
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write    # push ไป GHCR
+    steps:
+      - uses: actions/checkout@v4
+
+      # ทำชื่อ repo ให้เป็นตัวพิมพ์เล็ก (GHCR ชอบ lower-case)
+      - name: Prepare image name
+        id: prep
+        run: |
+          echo "REPO_SLUG=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+          echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/discord-voice-bot:${GITHUB_SHA}" >> $GITHUB_ENV
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build
+        run: docker build -t "$IMAGE" .
+
+      - name: Push
+        run: docker push "$IMAGE"
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Azure Web App (Container)
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: <YOUR_WEBAPP_NAME>              # <<< ใส่ชื่อ Web App จริง
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          images: ghcr.io/${{ env.REPO_SLUG }}/discord-voice-bot:${{ github.sha }}
